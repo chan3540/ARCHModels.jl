@@ -1,3 +1,27 @@
+"""
+RealGARCH(d,o,p,q)
+
+    GARCH equation
+
+        loghₘ,ₜ = ωₘ + ∑(i=1,...,o) τ₁ᵢzₜ₋ᵢ  + ∑(j=1,...,p) τ₂ⱼ(aₜ₋ⱼ²-1) τ(zₜ) + ∑(r=1,..,q) βᵣ loghₜ₋ᵣ + γ′uₜ  for m = 1,...,d  where d is the number of periodicity parameters. 
+
+    Measurement Equation
+
+        log xₜ = ξ + ϕ log hₜ + δ(zₜ) + uₜ (we assume ϕ=1) 
+
+        where δ(z)=δ₁z + δ₂(z²-1)
+ 
+rₜ = √hₜ zₜ,  zₜ ~ N(0,1)
+
+
+**Reference:**
+P.R. Hansen, Zhuo Huang, H.H. Shek, 2012. Realized GARCH: A joint model for returns and realized measures of volatility. Journal of applied econometrics 
+
+"""
+
+
+
+
 using CSV, DataFrames
 include("../src/ARCHModels.jl")
 using .ARCHModels
@@ -16,8 +40,6 @@ am = UnivariateARCHXModel(spec,rts,xts)
 fitted_am = fit(am)
 
 ht = volatilities(fitted_am).^2
-plot(log.(ht))
-plot!(log.(rts.^2))
-plot!(log.(xts))
-plot(sqrt.(ht))
-plot!(sqrt.(xts))
+
+plot(ts,ht)
+plot!(xts)
