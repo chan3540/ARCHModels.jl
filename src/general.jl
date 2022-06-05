@@ -3,6 +3,9 @@
 """
 abstract type ARCHModel <: StatisticalModel end
 
+abstract type ARCHXModel <: ARCHModel end
+
+
 # this makes predict.(am, :variance, 1:3) work
 Base.Broadcast.broadcastable(am::ARCHModel) = Ref(am)
 
@@ -28,6 +31,7 @@ function showerror(io::IO, e::NumParamError)
 end
 
 nobs(am::ARCHModel) = length(am.data)
+
 islinear(am::ARCHModel) = false
 isfitted(am::ARCHModel) = am.fitted
 

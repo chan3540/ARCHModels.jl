@@ -46,11 +46,11 @@ import StatsBase: StatisticalModel, stderror, loglikelihood, nobs, fit, fit!, co
                   bic, aicc, dof, coef, coefnames, coeftable, CoefTable,
 				  informationmatrix, islinear, score, vcov, residuals, predict
 import StatsModels: TableRegressionModel
-export ARCHModel, UnivariateARCHModel, UnivariateVolatilitySpec, StandardizedDistribution, Standardized, MeanSpec,
+export ARCHModel, UnivariateARCHModel, UnivariateARCHXModel, UnivariateVolatilitySpec, StandardizedDistribution, Standardized, MeanSpec,
        simulate, simulate!, selectmodel, StdNormal, StdT, StdGED, StdSkewT, Intercept, Regression,
        NoIntercept, ARMA, AR, MA, BG96, volatilities, mean, quantile, VaRs, pvalue, means, VolatilitySpec,
 	   MultivariateVolatilitySpec, MultivariateStandardizedDistribution, MultivariateARCHModel, MultivariateStdNormal,
-	   EGARCH, ARCH, GARCH, TGARCH, ARCHLMTest, DQTest,
+	   EGARCH, ARCH, GARCH, TGARCH, RealGARCH, ARCHLMTest, DQTest,
 	   DOW29, DCC, CCC, covariances, correlations
 
 
@@ -61,8 +61,11 @@ include("meanspecs.jl")
 include("univariatestandardizeddistributions.jl")
 include("EGARCH.jl")
 include("TGARCH.jl")
+include("univariatearchxmodel.jl")
+include("RealGARCH.jl")
 include("tests.jl")
 include("multivariatearchmodel.jl")
 include("multivariatestandardizeddistributions.jl")
 include("DCC.jl")
+
 end#module
