@@ -7,7 +7,7 @@ RealGARCH(d,o,p,q)
 
     Measurement Equation
 
-        log xₜ = ξ + ϕ log hₜ + δ(zₜ) + uₜ 
+        log xₜ = ξ + ϕ log hₜ + δ(zₜ) + uₜ (we set ϕ = 1 if an unbiased measure of volatility xₜ is used.)
 
         where δ(z)=δ₁z + δ₂(z²-1)
  
@@ -47,16 +47,18 @@ xts_ins = xts[1:7*ins_n]
 # in sample estimation 
 
 # periodic realgarch
-spec = RealGARCH{7,1,1,1}(zeros(9+6))
+# Refer to the model description for what d,o,p and q mean. 
+
+spec = RealGARCH{7,1,1,1}(zeros(8+6))
 am = UnivariateARCHXModel(spec,rts_ins,xts_ins)
 fitted_am = fit(am)
 fitted_coefs = fitted_am.spec.coefs
 spec = RealGARCH{7,1,1,1}(fitted_coefs)
 am = UnivariateARCHXModel(spec,rts,xts)
-ht_pregarch = (volatilities(am).^2)[7*ins_n+1:end]
+ht_pregarch_os = (volatilities(am).^2)[7*ins_n+1:end]
 
 # realgarch
-spec = RealGARCH{1,1,1,1}(zeros(9))
+spec = RealGARCH{1,1,1,1}(zeros(8))
 am = UnivariateARCHXModel(spec,rts_ins,xts_ins)
 fitted_am = fit(am)
 fitted_coefs = fitted_am.spec.coefs

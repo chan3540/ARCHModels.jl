@@ -40,7 +40,7 @@ Parameters:   -0.1  -0.1  0.1  0.8  0.1  -0.1  -0.1  0.1
 
 RealGARCH{d,o,p,q}(coefs::Vector{T}) where {d, o, p, q, T}  = RealGARCH{d, o, p, q, T}(coefs)
 
-@inline nparams(::Type{<:RealGARCH{d,o,p,q}}) where {d,o,p,q} = d+o+p+q+5
+@inline nparams(::Type{<:RealGARCH{d,o,p,q}}) where {d,o,p,q} = d+o+p+q+4
 
 @inline presample(::Type{<:RealGARCH{d,o,p,q}}) where {d,o,p,q} = max(o,p,q)
 
@@ -71,9 +71,9 @@ Base.@propagate_inbounds @inline function ut_update!(
     @muladd begin
         mut = log(data_X[t]) 
         mut = mut - garchcoefs[d+o+p+q+2]
-        mut = mut - garchcoefs[d+o+p+q+3]*lht[end]
-        mut = mut - garchcoefs[d+o+p+q+4]*zt[end] 
-        mut = mut - garchcoefs[d+o+p+q+5]*(zt[end]^2 - 1)
+        mut = mut - lht[end]#garchcoefs[d+o+p+q+3]*lht[end]
+        mut = mut - garchcoefs[d+o+p+q+3]*zt[end] 
+        mut = mut - garchcoefs[d+o+p+q+4]*(zt[end]^2 - 1)
     end
     push!(ut, mut)
     return nothing
@@ -85,7 +85,7 @@ end
 
 
 function startingvals(spec::Type{<:RealGARCH{d, o, p, q}}, data::Array{T}) where {d, o, p, q, T}
-    x0 = zeros(T, d+o+p+q+5)
+    x0 = zeros(T, d+o+p+q+4)
     x0[d+o+1:d+o+p] .= 0.3/q
     x0[d+o+p+1:d+o+p+q] .= 0.7/q
     x0[1] = log.(mean(data))
@@ -94,8 +94,8 @@ end
 
 
 function constraints(::Type{<:RealGARCH{d, o, p, q}}, ::Type{T}) where {d, o, p, q, T}
-    lower = zeros(T, d+o+p+q+5)
-    upper = zeros(T, d+o+p+q+5)
+    lower = zeros(T, d+o+p+q+4)
+    upper = zeros(T, d+o+p+q+4)
     lower .=  T(-Inf)
     upper .= T(Inf)
     lower[1] = T(-Inf)
@@ -103,16 +103,16 @@ function constraints(::Type{<:RealGARCH{d, o, p, q}}, ::Type{T}) where {d, o, p,
 end
 
 function coefnames(::Type{<:RealGARCH{d, o, p, q}}) where {d, o, p, q}
-    names = Array{String, 1}(undef, d+o+p+q+5)
+    names = Array{String, 1}(undef, d+o+p+q+4)
     names[1:d] .= (i -> "ω"*subscript(i)).([1:d...]) 
     names[d+1:d+o] .= (i -> "τ"*subscript(i)*subscript(1)).([1:o...])
     names[d+o+1:d+o+p] .= (i -> "τ"*subscript(i)*subscript(2)).([1:p...])
     names[d+o+p+1:d+o+p+q] .= (i -> "β"*subscript(i)).([1:q...])
     names[d+o+p+q+1] = "γ"
     names[d+o+p+q+2] = "ξ"
-    names[d+o+p+q+3] = "ϕ"
-    names[d+o+p+q+4] = "δ"*subscript(1)
-    names[d+o+p+q+5] = "δ"*subscript(2)
+#    names[d+o+p+q+3] = "ϕ"
+    names[d+o+p+q+3] = "δ"*subscript(1)
+    names[d+o+p+q+4] = "δ"*subscript(2)
     return names
 end
 
