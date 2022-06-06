@@ -147,44 +147,22 @@ end
 #
 #Not all prediction targets / volatility specifications support multi-step predictions.
 #"""
-#function predict(am::UnivariateARCHModel{T, VS, SD}, what=:volatility, horizon=1; level=0.01) where {T, VS, SD, MS}
-#	ht = volatilities(am).^2
-#	lht = log.(ht)
-#	zt = residuals(am)
-#	at = residuals(am, standardized=false)
-#	themean = T(0)
-#	if horizon > 1
-#		if what == :VaR
-#			error("Predicting VaR more than one period ahead is not implemented. Consider predicting one period ahead and scaling by `sqrt(horizon)`.")
-#		elseif what == :volatility
-#			error("Predicting volatility more than one period ahead is not implemented.")
-#		elseif what == :variance && !(VS <: TGARCH)
-#			error("Predicting variance more than one period ahead is not implemented for $(modname(VS)).")
-#		end
-#	end
-#    data = copy(am.data)
-#	for current_horizon = (1 : horizon)
-#		t = length(data) + current_horizon
-#		if what == :return || what == :VaR
-#			themean = mean(at, ht, lht, am.data, am.meanspec, am.meanspec.coefs, t)
-#		end
-#		update!(ht, lht, zt, at, ut, VS, am.spec.coefs, current_horizon)
-#		push!(zt, 0.)
-#		push!(at, 0.)
-#        push!(data, themean)
-#	end
-#	if what == :return
-#		return themean
-#	elseif what == :volatility
-#		return sqrt(ht[end])
-#	elseif what == :variance
-#		return ht[end]
-#	elseif what == :VaR
-#		return -themean - sqrt(ht[end]) * quantile(am.dist, level)
-#	else error("Prediction target $what unknown.")
-#	end
-#end
-#
+function predict(am::UnivariateARCHXModel{T1, VS}; horizon=1) where {T1, VS}
+	ht = volatilities(am).^2
+	lht = log.(ht)
+	zt = residuals(am)
+    ut = T1[0]
+    T = length(am.data)
+	for current_horizon in 1:horizon
+        update!(ht, lht, zt, ut, VS, am.spec.coefs,T+current_horizon)
+		push!(zt, 0.)
+	end
+    return ht
+end
+
+
+
+
 """
     means(am::UnivariateARCHModel)
 Return the conditional means of the model.
@@ -198,11 +176,11 @@ Return the conditional means of the model.
 Return the residuals of the model. Pass `standardized=false` for the non-devolatized residuals.
 """
 function residuals(am::UnivariateARCHXModel{T, VS}; standardized=true) where {T, VS, SD}
-		ht = Vector{T}(undef, 0)
-		lht = Vector{T}(undef, 0)
-		zt = Vector{T}(undef, 0)
-		ut = Vector{T}(undef, 0)
-		loglik!(ht, lht, zt, ut, VS, am.data, am.data_X, am.spec.coefs)
+	ht = Vector{T}(undef, 0)
+	lht = Vector{T}(undef, 0)
+	zt = Vector{T}(undef, 0)
+	ut = Vector{T}(undef, 0)
+	loglik!(ht, lht, zt, ut, VS, am.data, am.data_X, am.spec.coefs)
 	return standardized ? zt : sqrt(ht).*zt
 end
 
