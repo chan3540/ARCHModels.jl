@@ -60,3 +60,12 @@ else
 end
 return u * Diagonal(dtilde[:]) * u'
 end
+
+
+function mse(σt,ht)
+    return mean((σt .- ht).^2)
+end 
+
+function qlike(σt,ht)
+    return mean(σt./ht .- log.(σt./ht) .- 1) 
+end 
