@@ -30,19 +30,27 @@ using .ARCHModels
 
 # read data
 tickers = ["SPY","KO","AAPL","TSLA","JNJ","CVX"]
-filename = tickers[1]*"_RMs.csv"#"CoinbasePro_RV_ETH-USD.csv"
+#filename = tickers[1]*"_RMs.csv"#
+filename = "CoinbasePro_RV_ETH-USD.csv"
 readpath = dirname(pwd())*"\\ARCHModels.jl\\src\\data\\"*filename
 df = DataFrame(CSV.File(readpath,header = 1))
-#ts = df[2:end,1]
-#rts = df[2:end,3]
-rms = ["RV_15s","RV_2min","RV_5min","RV_10min","RV_15min","DR","RK"]
+ts = df[1:end,1]
+rts = df[1:end,3]
+xts = df[1:end,2]
 
+#split insample / out-of-sample
+
+N₁ = 100
+rts_ins = rts[1:7*N₁]
+xts_ins = xts[1:7*N₁]
+
+
+rms = ["RV_15s","RV_2min","RV_5min","RV_10min","RV_15min","DR","RK"]
 c2c_r = diff(log.(df.close))
 o2c_r = (log.(df.close) .- log.(df.open))[2:end]
 rm = df[2:end,rms[1]]
-
 #split insample / out-of-sample
-N₁ = 200
+N₁ = 100
 rts_ins = c2c_r[1:7*N₁]
 xts_ins = rm[1:7*N₁]
 
@@ -64,11 +72,11 @@ xts_ins = rm[1:7*N₁]
 #ht_pregarch_os = (volatilities(am).^2)[7*N₁+1:end]
 
 # realgarch
-spec = RealGARCH{1,1,1}(zeros(8))
+spec = RealGARCH{1,1,1,1}(zeros(8))
 am = UnivariateARCHXModel(spec,rts_ins,xts_ins)
 fitted_am = fit(am)
 fitted_coefs = fitted_am.spec.coefs
-spec = RealGARCH{1,1,1}(fitted_coefs)
+spec = RealGARCH{1,1,1,1}(fitted_coefs)
 am = UnivariateARCHXModel(spec,rts,xts)
 ht_regarch_os = (volatilities(am).^2)[7*N₁+1:end]
 

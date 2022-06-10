@@ -4,7 +4,7 @@
 Abstract supertype that univariate volatility specifications inherit from.
 """
 
-abstract type UnivariateXVolatilitySpec{T} <: UnivariateVolatilitySpec{T} end
+#abstract type UnivariateXVolatilitySpec{T} <: UnivariateVolatilitySpec{T} end
 
 """
     StandardizedDistribution{T} <: Distributions.Distribution{Univariate, Continuous}
@@ -18,7 +18,7 @@ Abstract supertype that standardized distributions inherit from.
               			} <: ARCHXModel
 """
 mutable struct UnivariateARCHXModel{T<:AbstractFloat,
-                 				   VS<:UnivariateXVolatilitySpec
+                 				   VS<:UnivariateVolatilitySpec
                  				   } <: ARCHXModel
     spec::VS
     data::Vector{T}
@@ -161,20 +161,6 @@ function predict(am::UnivariateARCHXModel{T1, VS}; horizon=1) where {T1, VS}
 end
 
 
-
-
-"""
-    means(am::UnivariateARCHModel)
-Return the conditional means of the model.
-"""
-#function means(am::UnivariateARCHModel)
-#	return am.data-residuals(am; standardized=false)
-#end
-
-"""
-    residuals(am::UnivariateARCHModel; standardized=true)
-Return the residuals of the model. Pass `standardized=false` for the non-devolatized residuals.
-"""
 function residuals(am::UnivariateARCHXModel{T, VS}; standardized=true) where {T, VS, SD}
 	ht = Vector{T}(undef, 0)
 	lht = Vector{T}(undef, 0)
@@ -233,6 +219,48 @@ Return the in-sample Value at Risk implied by `am`.
 	LL = LL/2
 end
 
+@inline function partial_loglik!(ht::AbstractVector{T1}, lht::AbstractVector{T1},
+    zt::AbstractVector{T1}, ut::AbstractVector{T1}, vs::Type{VS},
+    data::Vector{T2}, data_X::Vector{T2}, coefs::AbstractVector{T3}
+    ) where {VS<:UnivariateVolatilitySpec, T1,T2<:AbstractFloat,T3}
+    garchcoefs = coefs
+    lowergarch, uppergarch = constraints(VS, T3)
+    all(lowergarch.<garchcoefs.<uppergarch) || return T3(-Inf)
+    T = length(data)
+    r = presample(VS)
+    T > r || error("Sample too small.")
+    @inbounds begin
+        h0 = var(data) 
+        LL = zero(T3)
+        σu2 = zero(T3)
+        for t = 1:T
+            if t > r
+                update!(ht, lht, zt, ut, VS, garchcoefs,t)
+            else
+                push!(ht, h0)
+                push!(lht, log(h0))
+            end
+            ht[end] < 0 && return T3(NaN)
+            push!(zt, data[t]/sqrt(ht[end]))
+            ut_update!(ht, lht, zt, ut, data_X, VS, garchcoefs, t)
+            LL += - lht[end] - zt[end]^2 - log(2π)
+            σu2 += ut[end]^2
+        end
+    end
+	LL = LL/2
+end
+
+function partial_loglik(spec::Type{VS}, 
+                   data::Vector{<:AbstractFloat}, data_X::Vector{<:AbstractFloat}, coefs::AbstractVector{T2}
+                   ) where {VS<:UnivariateVolatilitySpec,T2}
+	r = max(presample(VS), 1) # make sure this works for, e.g., ARCH{0}; CircularBuffer requires at least a length of 1
+    ht = CircularBuffer{T2}(r)
+    lht = CircularBuffer{T2}(r)
+    zt = CircularBuffer{T2}(r)
+	ut = CircularBuffer{T2}(1)
+    partial_loglik!(ht, lht, zt, ut, spec, data, data_X, coefs)
+end
+
 function loglik(spec::Type{VS}, 
                    data::Vector{<:AbstractFloat}, data_X::Vector{<:AbstractFloat}, coefs::AbstractVector{T2}
                    ) where {VS<:UnivariateVolatilitySpec,T2}
@@ -242,6 +270,17 @@ function loglik(spec::Type{VS},
     zt = CircularBuffer{T2}(r)
 	ut = CircularBuffer{T2}(1)
     loglik!(ht, lht, zt, ut, spec, data, data_X, coefs)
+end
+
+function partial_logliks(spec, data, data_X, coefs::AbstractVector{T}) where {T}
+    garchcoefs = coefs
+    ht = T[]
+    lht = T[]
+    zt = T[]
+	ut = T[]
+    loglik!(ht, lht, zt, ut, spec, data, data_X, coefs)
+	σᵤ² = mean(ut.^2)
+    LLs = (-lht .- zt.^2 .- log(σᵤ²) .- (ut.^2)./σᵤ²)./2
 end
 
 function logliks(spec, data, data_X, coefs::AbstractVector{T}) where {T}
@@ -280,43 +319,7 @@ function _fit!(coefs::Vector{T}, ::Type{VS},
     return nothing
 end
 
-"""
-    fit(VS::Type{<:UnivariateVolatilitySpec}, data; dist=StdNormal, meanspec=Intercept,
-        algorithm=BFGS(), autodiff=:forward, kwargs...)
 
-Fit the ARCH model specified by `VS` to `data`. `data` can be a vector or a
-GLM.LinearModel (or GLM.TableRegressionModel).
-
-# Keyword arguments:
-- `dist=StdNormal`: the error distribution.
-- `meanspec=Intercept`: the mean specification, either as a type or instance of that type.
-- `algorithm=BFGS(), autodiff=:forward, kwargs...`: passed on to the optimizer.
-
-# Example: EGARCH{1, 1, 1} model without intercept, Student's t errors.
-```jldoctest
-julia> fit(EGARCH{1, 1, 1}, BG96; meanspec=NoIntercept, dist=StdT)
-
-EGARCH{1, 1, 1} model with Student's t errors, T=1974.
-
-
-Volatility parameters:
-──────────────────────────────────────────────
-      Estimate  Std.Error    z value  Pr(>|z|)
-──────────────────────────────────────────────
-ω   -0.0162014  0.0186806  -0.867286    0.3858
-γ₁  -0.0378454  0.018024   -2.09972     0.0358
-β₁   0.977687   0.012558   77.8538      <1e-99
-α₁   0.255804   0.0625497   4.08961     <1e-04
-──────────────────────────────────────────────
-
-Distribution parameters:
-─────────────────────────────────────────
-   Estimate  Std.Error  z value  Pr(>|z|)
-─────────────────────────────────────────
-ν   4.12423    0.40059  10.2954    <1e-24
-─────────────────────────────────────────
-```
-"""
 function fit(::Type{VS}, data::Vector{T}, data_X::Vector{T}; algorithm=NelderMead(),
              autodiff=:forward, kwargs...
              ) where {VS<:UnivariateVolatilitySpec, T<:AbstractFloat
