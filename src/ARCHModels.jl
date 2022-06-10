@@ -50,7 +50,7 @@ export ARCHModel, UnivariateARCHModel, UnivariateARCHXModel, UnivariateVolatilit
        simulate, simulate!, selectmodel, StdNormal, StdT, StdGED, StdSkewT, Intercept, Regression,
        NoIntercept, ARMA, AR, MA, BG96, volatilities, mean, quantile, VaRs, pvalue, means, VolatilitySpec,
 	   MultivariateVolatilitySpec, MultivariateStandardizedDistribution, MultivariateARCHModel, MultivariateStdNormal,
-	   EGARCH, ARCH, GARCH, TGARCH, RealGARCH, pRealGARCH, ARCHLMTest, DQTest,
+	   EGARCH, ARCH, GARCH, TGARCH, RealGARCH, pRealGARCH, dRealGARCH, ARCHLMTest, DQTest,
 	   DOW29, DCC, CCC, covariances, correlations,
 	   qlike, mse
 
@@ -65,6 +65,8 @@ include("EGARCH.jl")
 include("TGARCH.jl")
 include("univariatearchxmodel.jl")
 include("RealGARCH.jl")
+include("dRealGARCH.jl")
+
 include("tests.jl")
 include("multivariatearchmodel.jl")
 include("multivariatestandardizeddistributions.jl")
