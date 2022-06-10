@@ -1,17 +1,18 @@
 """
-RealGARCH(d,o,p,q)
+pRealGARCH(P,p,q₁,q₂)
 
     GARCH equation
 
-        loghₜ = ω(mod(t-1,m)+1) + ∑(i=1,...,o) τ₁ᵢzₜ₋ᵢ  + ∑(j=1,...,p) τ₂ⱼ(aₜ₋ⱼ²-1) τ(zₜ) + ∑(r=1,..,q) βᵣ loghₜ₋ᵣ + γ′uₜ  for m = 1,...,d  where d is the number of periodicity parameters. 
+        loghₜ = ω(mod(t-1,m)+1) + ∑(r=1,..,p) βᵣ loghₜ₋ᵣ +  ∑(i=1,...,q₁) τ₁ᵢzₜ₋ᵢ  + ∑(j=1,...,q₂) τ₂ⱼ(aₜ₋ⱼ²-1) τ(zₜ) +  + γ′uₜ  for m = 1,...,P  where P is the number of periodicity parameters. 
 
     Measurement Equation
 
-        log xₜ = ξ + ϕ log hₜ + δ(zₜ) + uₜ (we set ϕ = 1 if an unbiased measure of volatility xₜ is used.)
+        log xₜ = ξ + log hₜ + δ(zₜ) + uₜ 
 
         where δ(z)=δ₁z + δ₂(z²-1)
  
 rₜ = √hₜ zₜ,  zₜ ~ N(0,1)
+
 
 
 **Reference:**
@@ -22,23 +23,30 @@ P.R. Hansen, Zhuo Huang, H.H. Shek, 2012. Realized GARCH: A joint model for retu
 using CSV, DataFrames
 using Optim
 using Plots
-using PlotlyJS
 
 include("../src/ARCHModels.jl")
 using .ARCHModels
 
 
 # read data
-readpath = dirname(pwd())*"\\ARCHModels.jl\\src\\data\\CoinbasePro_RV_ETH-USD.csv"
+tickers = ["SPY","KO","AAPL","TSLA","JNJ","CVX"]
+filename = tickers[1]*"_RMs.csv"#"CoinbasePro_RV_ETH-USD.csv"
+readpath = dirname(pwd())*"\\ARCHModels.jl\\src\\data\\"*filename
 df = DataFrame(CSV.File(readpath,header = 1))
-ts = df[:,1]
-rts = df[:,3]
-xts = df[:,2]
+#ts = df[2:end,1]
+#rts = df[2:end,3]
+rms = ["RV_15s","RV_2min","RV_5min","RV_10min","RV_15min","DR","RK"]
+
+c2c_r = diff(log.(df.close))
+o2c_r = (log.(df.close) .- log.(df.open))[2:end]
+rm = df[2:end,rms[1]]
 
 #split insample / out-of-sample
-ins_n = 200
-rts_ins = rts[1:7*ins_n]
-xts_ins = xts[1:7*ins_n]
+N₁ = 200
+rts_ins = c2c_r[1:7*N₁]
+xts_ins = rm[1:7*N₁]
+
+
 
 
 
@@ -47,24 +55,22 @@ xts_ins = xts[1:7*ins_n]
 # in sample estimation 
 
 # periodic realgarch
-# Refer to the model description for what d,o,p and q mean. 
-
-spec = RealGARCH{7,1,1,1}(zeros(8+6))
-am = UnivariateARCHXModel(spec,rts_ins,xts_ins)
-fitted_am = fit(am)
-fitted_coefs = fitted_am.spec.coefs
-spec = RealGARCH{7,1,1,1}(fitted_coefs)
-am = UnivariateARCHXModel(spec,rts,xts)
-ht_pregarch_os = (volatilities(am).^2)[7*ins_n+1:end]
+#spec = pRealGARCH{7,1,1,1}(zeros(8+6))
+#am = UnivariateARCHXModel(spec,rts_ins,xts_ins)
+#fitted_am = fit(am)
+#fitted_coefs = fitted_am.spec.coefs
+#spec = pRealGARCH{7,1,1,1}(fitted_coefs)
+#am = UnivariateARCHXModel(spec,rts,xts)
+#ht_pregarch_os = (volatilities(am).^2)[7*N₁+1:end]
 
 # realgarch
-spec = RealGARCH{1,1,1,1}(zeros(8))
+spec = RealGARCH{1,1,1}(zeros(8))
 am = UnivariateARCHXModel(spec,rts_ins,xts_ins)
 fitted_am = fit(am)
 fitted_coefs = fitted_am.spec.coefs
-spec = RealGARCH{1,1,1,1}(fitted_coefs)
+spec = RealGARCH{1,1,1}(fitted_coefs)
 am = UnivariateARCHXModel(spec,rts,xts)
-ht_regarch_os = (volatilities(am).^2)[7*ins_n+1:end]
+ht_regarch_os = (volatilities(am).^2)[7*N₁+1:end]
 
 # egarch
 spec = EGARCH{1,1,1}(zeros(4))
@@ -73,7 +79,9 @@ fitted_am = fit(am)
 fitted_coefs = fitted_am.spec.coefs
 spec = EGARCH{1,1,1}(fitted_coefs)
 am = UnivariateARCHModel(spec,rts)
-ht_egarch_os = (volatilities(am).^2)[7*ins_n+1:end]
+
+
+ht_egarch_os = (volatilities(am).^2)[7*N₁+1:end]
 
 # tgarch
 spec = TGARCH{1,1,1}(zeros(4))
@@ -82,13 +90,13 @@ fitted_am = fit(am)
 fitted_coefs = fitted_am.spec.coefs
 spec = TGARCH{1,1,1}(fitted_coefs)
 am = UnivariateARCHModel(spec,rts)
-ht_tgarch_os = (volatilities(am).^2)[7*ins_n+1:end]
+ht_tgarch_os = (volatilities(am).^2)[7*N₁+1:end]
 
 
 #Out-of-sample realized measures
 
-#σt2 =rts[7*ins_n+1:end].^2  # 1 day squared return
-σt2 =xts[7*ins_n+1:end] # daily rv
+#σt2 =rts[7*N₁+1:end].^2  # 1 day squared return
+σt2 =xts[7*N₁+1:end] # daily rv
 
 
 loss = Dict()
