@@ -62,6 +62,10 @@ end
 
 loglikelihood(am::UnivariateARCHXModel) = loglik(typeof(am.spec), am.data, am.data_X,
                                       am.spec.coefs)
+                                      
+partial_loglikelihood(am::UnivariateARCHXModel) = partial_loglik(typeof(am.spec), am.data, am.data_X,
+                                      am.spec.coefs)
+
 
 dof(am::UnivariateARCHXModel) = nparams(typeof(am.spec)) 
 coef(am::UnivariateARCHXModel) = am.spec.coefs

@@ -91,7 +91,9 @@ end
 
 function startingvals(spec::Type{<:pRealGARCH{P, p, q₁, q₂}}, data::Array{T}) where {P, p, q₁, q₂, T}
     x0 = zeros(T, P+p+q₁+q₂+4)
-    x0[P+1:P+p] .= 0.7/p
+    x0[P+1:P+p] .= 0.8/p
+    x0[P+1:P+p] .= 0.8/p
+
     x0[1] = log.(mean(data.^2))
     return x0
 end

@@ -30,7 +30,7 @@ using .ARCHModels
 
 # read data
 tickers = ["SPY","KO","AAPL","TSLA","JNJ","CVX"]
-#filename = tickers[1]*"_RMs.csv"#
+filename = tickers[1]*"_RMs.csv"#
 filename = "CoinbasePro_RV_ETH-USD.csv"
 readpath = dirname(pwd())*"\\ARCHModels.jl\\src\\data\\"*filename
 df = DataFrame(CSV.File(readpath,header = 1))
@@ -45,12 +45,16 @@ rts_ins = rts[1:7*N₁]
 xts_ins = xts[1:7*N₁]
 
 
+
 rms = ["RV_15s","RV_2min","RV_5min","RV_10min","RV_15min","DR","RK"]
 c2c_r = diff(log.(df.close))
 o2c_r = (log.(df.close) .- log.(df.open))[2:end]
 rm = df[2:end,rms[1]]
+
 #split insample / out-of-sample
-N₁ = 100
+N₁ = 200
+rts = c2c_r
+xts = rm
 rts_ins = c2c_r[1:7*N₁]
 xts_ins = rm[1:7*N₁]
 
@@ -63,32 +67,32 @@ xts_ins = rm[1:7*N₁]
 # in sample estimation 
 
 # periodic realgarch
-#spec = pRealGARCH{7,1,1,1}(zeros(8+6))
-#am = UnivariateARCHXModel(spec,rts_ins,xts_ins)
-#fitted_am = fit(am)
-#fitted_coefs = fitted_am.spec.coefs
-#spec = pRealGARCH{7,1,1,1}(fitted_coefs)
-#am = UnivariateARCHXModel(spec,rts,xts)
-#ht_pregarch_os = (volatilities(am).^2)[7*N₁+1:end]
-
-# realgarch
-spec = RealGARCH{1,1,1,1}(zeros(8))
+spec = pRealGARCH{7,1,1,1}(zeros(8+6))
 am = UnivariateARCHXModel(spec,rts_ins,xts_ins)
 fitted_am = fit(am)
 fitted_coefs = fitted_am.spec.coefs
-spec = RealGARCH{1,1,1,1}(fitted_coefs)
+spec = pRealGARCH{7,1,1,1}(fitted_coefs)
+am = UnivariateARCHXModel(spec,rts,xts)
+ht_pregarch_os = (volatilities(am).^2)[7*N₁+1:end]
+
+# realgarch
+spec = RealGARCH{1,1}(zeros(8)) # RealGARCH{p,q} = RealGARCH{p,q₁,q₂} where q₁=q₂ 
+am = UnivariateARCHXModel(spec,rts_ins,xts_ins)
+fitted_am = fit(am)
+fitted_coefs = fitted_am.spec.coefs
+spec = RealGARCH{1,1}(fitted_coefs)
 am = UnivariateARCHXModel(spec,rts,xts)
 ht_regarch_os = (volatilities(am).^2)[7*N₁+1:end]
 
 # egarch
+#Refer to https://s-broda.github.io/ARCHModels.jl/stable/univariatetypehierarchy/ for EGARCH and TGARCH model specification. 
+
 spec = EGARCH{1,1,1}(zeros(4))
 am = UnivariateARCHModel(spec,rts_ins)
 fitted_am = fit(am)
 fitted_coefs = fitted_am.spec.coefs
 spec = EGARCH{1,1,1}(fitted_coefs)
 am = UnivariateARCHModel(spec,rts)
-
-
 ht_egarch_os = (volatilities(am).^2)[7*N₁+1:end]
 
 # tgarch
@@ -103,8 +107,8 @@ ht_tgarch_os = (volatilities(am).^2)[7*N₁+1:end]
 
 #Out-of-sample realized measures
 
-#σt2 =rts[7*N₁+1:end].^2  # 1 day squared return
-σt2 =xts[7*N₁+1:end] # daily rv
+σt2 =rts[7*N₁+1:end].^2 .+ 0.000001  # 1 day squared return. You may find rt=0, which leads to undefined log value. 
+#σt2 =xts[7*N₁+1:end] # daily rv
 
 
 loss = Dict()
@@ -121,8 +125,8 @@ relative_loss_table[!,"LossFunction"] = ["MSE","logMSE","QLIKE"]
 relative_loss_table = relative_loss_table[:,["LossFunction","TGARCH" ,"EGARCH", "RealGARCH", "pRealGARCH"]]
 
 
-plot(σt2,yaxis=:log,label="RV")
-plot!(ht_pregarch_os,yaxis=:log,label="pRealGARCH",alpha=0.5)
-plot!(ht_regarch_os,label="RealGARCH",alpha=0.5)
-plot!(ht_egarch_os,label="EGARCH",alpha=0.5)
-plot!(ht_egarch_os,label="TGARCH",alpha=0.5)
+#plot(σt2,yaxis=:log,label="RV")
+#plot!(ht_pregarch_os,yaxis=:log,label="pRealGARCH",alpha=0.5)
+#plot!(ht_regarch_os,label="RealGARCH",alpha=0.5)
+#plot!(ht_egarch_os,label="EGARCH",alpha=0.5)
+#plot!(ht_egarch_os,label="TGARCH",alpha=0.5)
